@@ -17,9 +17,15 @@ export function useMicrophone(stream) {
 
         try {
             const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+            
+            // Try to resume immediately in case it's suspended
+            if (audioContext.state === 'suspended') {
+                audioContext.resume().catch(e => console.error("AudioContext resume failed:", e))
+            }
+
             const analyser = audioContext.createAnalyser()
             analyser.fftSize = 256
-            analyser.smoothingTimeConstant = 0.8
+            analyser.smoothingTimeConstant = 0.5 // Lower smoothing for faster response
 
             const source = audioContext.createMediaStreamSource(stream)
             source.connect(analyser)
@@ -29,6 +35,17 @@ export function useMicrophone(stream) {
             sourceRef.current = source
             setIsActive(true)
 
+            // Setup listeners to guarantee AudioContext unblocks on first interaction
+            const unlockAudioContext = () => {
+                if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+                    audioContextRef.current.resume()
+                }
+                window.removeEventListener('click', unlockAudioContext)
+                window.removeEventListener('touchstart', unlockAudioContext)
+            }
+            window.addEventListener('click', unlockAudioContext)
+            window.addEventListener('touchstart', unlockAudioContext)
+
             const dataArray = new Uint8Array(analyser.frequencyBinCount)
 
             const updateLevel = () => {
@@ -36,15 +53,15 @@ export function useMicrophone(stream) {
 
                 analyserRef.current.getByteFrequencyData(dataArray)
 
-                // Calculate RMS (root mean square) for a more accurate level
+                // Calculate average frequency volume
                 let sum = 0
                 for (let i = 0; i < dataArray.length; i++) {
-                    sum += dataArray[i] * dataArray[i]
+                    sum += dataArray[i]
                 }
-                const rms = Math.sqrt(sum / dataArray.length)
+                const average = sum / dataArray.length
 
-                // Normalize to 0–100 range with some sensitivity adjustment
-                const normalized = Math.min(100, Math.round((rms / 128) * 100))
+                // Increase sensitivity a lot: average usually hovers around 10-30 for normal speaking
+                const normalized = Math.min(100, Math.round((average / 40) * 100))
                 setMicLevel(normalized)
 
                 animationFrameRef.current = requestAnimationFrame(updateLevel)
