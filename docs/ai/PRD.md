@@ -13,13 +13,13 @@ Xây dựng một luồng **Onboarding & Kiểm tra năng lực giáo viên** ch
 ### 3. Phạm vi dự án (Scope)
 
 #### Trong phạm vi (v1.0)
-- Stepper navigation 4 bước: Registration → Video Test → Language → Done!
-- **Page 1 — Application Form**: Form đăng ký với Country, Nationality, Name, Email, Password.
-- **Page 2 — Email Confirmation** *(placeholder)*
-- **Page 3 — Pre-Test Instructions** *(placeholder)*
-- **Page 4 — Environment/Video Test** *(placeholder)*
-- **Page 5 — Hardware Permission** *(placeholder)*
-- **Page 6 — Language Test Recording**: Hiển thị câu hỏi, camera preview, countdown, nút ghi hình.
+- Stepper navigation 5 bước: Registration → Video Test → Language → Demo Teaching → Done!
+- Step-locking: không cho click vào bước chưa hoàn thành.
+- **Step 1 — Application Form**: Form đăng ký với Country, Nationality, Name, Email, Password.
+- **Step 2 — Email Confirmation** *(placeholder — chỉ có nút Continue)*
+- **Step 3 — Language Test Recording**: Hiển thị câu hỏi, camera preview, countdown, nút ghi hình.
+- **Step 4 — Demo Teaching**: Ghi hình bài giảng demo 3–5 phút, camera preview, tips.
+- **Step 5 — Done!**: Thông báo hoàn thành.
 
 #### Ngoài phạm vi
 - Backend API / database.
@@ -39,6 +39,8 @@ Xây dựng một luồng **Onboarding & Kiểm tra năng lực giáo viên** ch
 | US-05 | Ứng viên | Xem câu hỏi tiếng Anh và chuẩn bị ghi hình | Tôi hoàn thành bài test ngôn ngữ |
 | US-06 | Ứng viên | Thấy đếm ngược trước khi ghi hình | Tôi có thời gian chuẩn bị |
 | US-07 | Ứng viên | Xem trạng thái microphone | Tôi biết mic đang hoạt động |
+| US-08 | Ứng viên | Ghi hình bài giảng demo 3–5 phút | Tôi thể hiện được phong cách giảng dạy |
+| US-09 | Ứng viên | Không thể bỏ qua bước chưa hoàn thành | Tôi hoàn thành đúng trình tự |
 
 ### 5. Yêu cầu phi chức năng
 - **Responsive**: Hoạt động tốt trên mobile (≥375px) và desktop.
