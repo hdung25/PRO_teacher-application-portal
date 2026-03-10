@@ -11,6 +11,7 @@ export function useMicrophone(stream) {
     const analyserRef = useRef(null)
     const animationFrameRef = useRef(null)
     const lastUpdateTimeRef = useRef(0)
+    const sourceRef = useRef(null)
 
     const startAnalyser = useCallback(() => {
         if (!stream) return
