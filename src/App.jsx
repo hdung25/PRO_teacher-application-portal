@@ -1,9 +1,11 @@
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import Stepper from './components/Stepper'
 import Header from './components/Header'
 import ApplicationForm from './pages/ApplicationForm'
+import EmailConfirmation from './pages/EmailConfirmation'
 import LanguageTestRecording from './pages/LanguageTestRecording'
 import DemoTeaching from './pages/DemoTeaching'
+import { supabase } from './lib/supabaseClient'
 
 const STEPS = [
     { id: 1, label: 'Registration', shortLabel: 'Register' },
@@ -16,39 +18,50 @@ const STEPS = [
 function App() {
     const [currentStep, setCurrentStep] = useState(1)
     const [completedSteps, setCompletedSteps] = useState(new Set())
+    const [userId, setUserId] = useState(null)
 
-    const handleNext = () => {
+    // Check for existing session on mount
+    useEffect(() => {
+        const checkSession = async () => {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session?.user) {
+                setUserId(session.user.id)
+            }
+        }
+        checkSession()
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUserId(session?.user?.id || null)
+        })
+
+        return () => subscription.unsubscribe()
+    }, [])
+
+    const handleNext = useCallback(() => {
         setCompletedSteps((prev) => new Set([...prev, currentStep]))
         setCurrentStep((prev) => Math.min(prev + 1, STEPS.length))
-    }
+    }, [currentStep])
 
-    const handleBack = () => {
+    const handleBack = useCallback(() => {
         setCurrentStep((prev) => Math.max(prev - 1, 1))
-    }
+    }, [])
 
-    const goToStep = (step) => {
-        // Only allow navigating to completed steps or the current step
+    const goToStep = useCallback((step) => {
         if (completedSteps.has(step) || step === currentStep) {
             setCurrentStep(step)
         }
-    }
+    }, [completedSteps, currentStep])
 
     const renderPage = () => {
         switch (currentStep) {
             case 1:
                 return <ApplicationForm onNext={handleNext} />
             case 2:
-                return (
-                    <div className="card p-8 max-w-lg mx-auto text-center animate-fade-in">
-                        <h2 className="text-2xl font-bold text-gray-800 mb-4">Email Confirmation</h2>
-                        <p className="text-gray-500 mb-6">Please check your email to confirm your account.</p>
-                        <button className="btn-primary" onClick={handleNext}>Continue</button>
-                    </div>
-                )
+                return <EmailConfirmation onNext={handleNext} />
             case 3:
-                return <LanguageTestRecording onNext={handleNext} onBack={handleBack} />
+                return <LanguageTestRecording onNext={handleNext} onBack={handleBack} userId={userId} />
             case 4:
-                return <DemoTeaching onNext={handleNext} />
+                return <DemoTeaching onNext={handleNext} userId={userId} />
             case 5:
                 return (
                     <div className="card p-8 max-w-lg mx-auto text-center animate-fade-in">

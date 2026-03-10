@@ -1,5 +1,6 @@
 import { useState } from 'react'
-import { Eye, EyeOff, ChevronDown } from 'lucide-react'
+import { Eye, EyeOff, ChevronDown, Loader2 } from 'lucide-react'
+import { supabase } from '../lib/supabaseClient'
 
 const COUNTRIES = [
     'Vietnam', 'United States', 'United Kingdom', 'Canada', 'Australia',
@@ -28,13 +29,15 @@ function ApplicationForm({ onNext }) {
     const [showPassword, setShowPassword] = useState(false)
     const [agreed, setAgreed] = useState(false)
     const [errors, setErrors] = useState({})
+    const [isSubmitting, setIsSubmitting] = useState(false)
+    const [submitError, setSubmitError] = useState('')
 
     const handleChange = (field) => (e) => {
         setFormData((prev) => ({ ...prev, [field]: e.target.value }))
-        // Clear error on change
         if (errors[field]) {
             setErrors((prev) => ({ ...prev, [field]: '' }))
         }
+        if (submitError) setSubmitError('')
     }
 
     const validate = () => {
@@ -57,14 +60,65 @@ function ApplicationForm({ onNext }) {
         return newErrors
     }
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault()
         const newErrors = validate()
         if (Object.keys(newErrors).length > 0) {
             setErrors(newErrors)
             return
         }
-        onNext()
+
+        setIsSubmitting(true)
+        setSubmitError('')
+
+        try {
+            // 1. Sign up with Supabase Auth
+            const { data: authData, error: authError } = await supabase.auth.signUp({
+                email: formData.email,
+                password: formData.password,
+            })
+
+            if (authError) {
+                if (authError.message.includes('already registered')) {
+                    setSubmitError('This email is already registered. Please log in or use a different email.')
+                } else {
+                    setSubmitError(authError.message)
+                }
+                setIsSubmitting(false)
+                return
+            }
+
+            const userId = authData.user?.id
+            if (!userId) {
+                setSubmitError('Registration failed. Please try again.')
+                setIsSubmitting(false)
+                return
+            }
+
+            // 2. Insert teacher profile into the teachers table
+            const { error: insertError } = await supabase.from('teachers').insert({
+                id: userId,
+                first_name: formData.firstName.trim(),
+                middle_name: formData.middleName.trim() || null,
+                last_name: formData.lastName.trim(),
+                email: formData.email.trim().toLowerCase(),
+                country: formData.country,
+                nationality: formData.nationality,
+                status: 'pending',
+            })
+
+            if (insertError) {
+                console.error('Profile insert error:', insertError)
+                // Still proceed — auth user was created, profile can be retried
+            }
+
+            onNext()
+        } catch (err) {
+            setSubmitError('An unexpected error occurred. Please try again.')
+            console.error('Submit error:', err)
+        } finally {
+            setIsSubmitting(false)
+        }
     }
 
     return (
@@ -80,6 +134,13 @@ function ApplicationForm({ onNext }) {
                     </p>
                 </div>
 
+                {/* Global Submit Error */}
+                {submitError && (
+                    <div className="mb-5 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 animate-fade-in">
+                        {submitError}
+                    </div>
+                )}
+
                 <form onSubmit={handleSubmit} className="space-y-5">
                     {/* Country of Residence */}
                     <div>
@@ -91,6 +152,7 @@ function ApplicationForm({ onNext }) {
                                 id="country"
                                 value={formData.country}
                                 onChange={handleChange('country')}
+                                disabled={isSubmitting}
                                 className={`select-field ${errors.country ? 'border-red-400 focus:ring-red-300' : ''} ${formData.country ? 'text-gray-800' : ''}`}
                             >
                                 <option value="">Select country</option>
@@ -118,6 +180,7 @@ function ApplicationForm({ onNext }) {
                                 id="nationality"
                                 value={formData.nationality}
                                 onChange={handleChange('nationality')}
+                                disabled={isSubmitting}
                                 className={`select-field ${errors.nationality ? 'border-red-400 focus:ring-red-300' : ''} ${formData.nationality ? 'text-gray-800' : ''}`}
                             >
                                 <option value="">Select nationality</option>
@@ -147,6 +210,7 @@ function ApplicationForm({ onNext }) {
                                 placeholder="Enter first name"
                                 value={formData.firstName}
                                 onChange={handleChange('firstName')}
+                                disabled={isSubmitting}
                                 className={`input-field ${errors.firstName ? 'border-red-400 focus:ring-red-300' : ''}`}
                             />
                             {errors.firstName && (
@@ -163,6 +227,7 @@ function ApplicationForm({ onNext }) {
                                 placeholder="Optional"
                                 value={formData.middleName}
                                 onChange={handleChange('middleName')}
+                                disabled={isSubmitting}
                                 className="input-field"
                             />
                         </div>
@@ -179,6 +244,7 @@ function ApplicationForm({ onNext }) {
                             placeholder="Enter last name"
                             value={formData.lastName}
                             onChange={handleChange('lastName')}
+                            disabled={isSubmitting}
                             className={`input-field ${errors.lastName ? 'border-red-400 focus:ring-red-300' : ''}`}
                         />
                         {errors.lastName && (
@@ -197,6 +263,7 @@ function ApplicationForm({ onNext }) {
                             placeholder="email@example.com"
                             value={formData.email}
                             onChange={handleChange('email')}
+                            disabled={isSubmitting}
                             className={`input-field ${errors.email ? 'border-red-400 focus:ring-red-300' : ''}`}
                         />
                         {errors.email && (
@@ -216,6 +283,7 @@ function ApplicationForm({ onNext }) {
                                 placeholder="Min. 8 characters"
                                 value={formData.password}
                                 onChange={handleChange('password')}
+                                disabled={isSubmitting}
                                 className={`input-field pr-12 ${errors.password ? 'border-red-400 focus:ring-red-300' : ''}`}
                             />
                             <button
@@ -243,6 +311,7 @@ function ApplicationForm({ onNext }) {
                                     setAgreed(e.target.checked)
                                     if (errors.agreed) setErrors((prev) => ({ ...prev, agreed: '' }))
                                 }}
+                                disabled={isSubmitting}
                                 className="w-5 h-5 rounded-md border-gray-300 text-primary-600 
                            focus:ring-2 focus:ring-primary-400/50 cursor-pointer
                            transition-colors duration-200"
@@ -265,8 +334,19 @@ function ApplicationForm({ onNext }) {
 
                     {/* Submit Button */}
                     <div className="pt-3">
-                        <button type="submit" className="btn-primary text-base">
-                            Continue to Video Test
+                        <button
+                            type="submit"
+                            disabled={isSubmitting}
+                            className="btn-primary text-base flex items-center justify-center gap-2"
+                        >
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 size={18} className="animate-spin" />
+                                    Creating account...
+                                </>
+                            ) : (
+                                'Continue to Video Test'
+                            )}
                         </button>
                     </div>
                 </form>
