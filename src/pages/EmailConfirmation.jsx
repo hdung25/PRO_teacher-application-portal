@@ -11,19 +11,47 @@ function EmailConfirmation({ onNext }) {
     const [error, setError] = useState('')
     const pollRef = useRef(null)
 
-    // Get current user email
+    // Get current user email repeatedly if empty
     useEffect(() => {
-        const getUser = async () => {
-            const { data: { user } } = await supabase.auth.getUser()
-            if (user?.email) {
-                setUserEmail(user.email)
-                if (user.email_confirmed_at) {
+        const fetchUserEmail = async () => {
+            if (userEmail) return; // Don't fetch if we already have it
+            
+            try {
+                const { data: { session } } = await supabase.auth.getSession()
+                if (session?.user?.email) {
+                    setUserEmail(session.user.email)
+                    if (session.user.email_confirmed_at) {
+                        setIsVerified(true)
+                    }
+                } else {
+                    // Fallback to getUser if session doesn't have it
+                    const { data: { user } } = await supabase.auth.getUser()
+                    if (user?.email) {
+                        setUserEmail(user.email)
+                        if (user.email_confirmed_at) {
+                            setIsVerified(true)
+                        }
+                    }
+                }
+            } catch (err) {
+                console.error("Error fetching user email:", err)
+            }
+        }
+        
+        fetchUserEmail()
+        
+        // Also listen to auth state changes to catch when auth restores
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            if (session?.user?.email) {
+                setUserEmail(session.user.email)
+                if (session.user.email_confirmed_at) {
                     setIsVerified(true)
                 }
             }
-        }
-        getUser()
-    }, [])
+        })
+
+        return () => subscription?.unsubscribe()
+    }, [userEmail])
 
     // Poll for email verification every 5 seconds
     useEffect(() => {
