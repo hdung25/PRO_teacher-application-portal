@@ -3,18 +3,22 @@ import Stepper from './components/Stepper'
 import Header from './components/Header'
 import ApplicationForm from './pages/ApplicationForm'
 import LanguageTestRecording from './pages/LanguageTestRecording'
+import DemoTeaching from './pages/DemoTeaching'
 
 const STEPS = [
     { id: 1, label: 'Registration', shortLabel: 'Register' },
     { id: 2, label: 'Video Test', shortLabel: 'Video' },
     { id: 3, label: 'Language', shortLabel: 'Language' },
-    { id: 4, label: 'Done!', shortLabel: 'Done' },
+    { id: 4, label: 'Demo Teaching', shortLabel: 'Demo' },
+    { id: 5, label: 'Done!', shortLabel: 'Done' },
 ]
 
 function App() {
     const [currentStep, setCurrentStep] = useState(1)
+    const [completedSteps, setCompletedSteps] = useState(new Set())
 
     const handleNext = () => {
+        setCompletedSteps((prev) => new Set([...prev, currentStep]))
         setCurrentStep((prev) => Math.min(prev + 1, STEPS.length))
     }
 
@@ -23,7 +27,10 @@ function App() {
     }
 
     const goToStep = (step) => {
-        setCurrentStep(step)
+        // Only allow navigating to completed steps or the current step
+        if (completedSteps.has(step) || step === currentStep) {
+            setCurrentStep(step)
+        }
     }
 
     const renderPage = () => {
@@ -41,6 +48,8 @@ function App() {
             case 3:
                 return <LanguageTestRecording onNext={handleNext} onBack={handleBack} />
             case 4:
+                return <DemoTeaching onNext={handleNext} />
+            case 5:
                 return (
                     <div className="card p-8 max-w-lg mx-auto text-center animate-fade-in">
                         <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -60,7 +69,7 @@ function App() {
     return (
         <div className="min-h-screen flex flex-col">
             <Header />
-            <Stepper steps={STEPS} currentStep={currentStep} onStepClick={goToStep} />
+            <Stepper steps={STEPS} currentStep={currentStep} completedSteps={completedSteps} onStepClick={goToStep} />
             <main className="flex-1 flex items-start justify-center px-4 py-8 sm:py-12">
                 <div className="w-full max-w-2xl">
                     {renderPage()}
