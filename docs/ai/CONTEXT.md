@@ -20,18 +20,19 @@
 | Step-locking logic | ✅ Done | Không cho click vào step chưa hoàn thành |
 | Docs: PRD, ARCHITECTURE, CONVENTIONS | ✅ Done | |
 
-### ⚠️ Trạng thái thực tế (Demo Mode)
+### ⚠️ Trạng thái thực tế (Real Mode)
 
-Các chức năng sau hiện **chỉ là giả lập (mock/demo)**, chưa tích hợp thật:
+Tất cả các chức năng demo đã được chuyển sang **chạy thực tế (Production-ready)** với Supabase:
 
-| Chức năng | Hiện tại | Cần làm |
-|-----------|---------|---------|
-| Camera preview | Static placeholder | WebRTC `getUserMedia()` |
-| Mic level (DB LEVEL) | Random number 15–55 | Web Audio API `AnalyserNode` |
-| Email confirmation | Nút "Continue" bỏ qua | Backend API gửi email + verify |
-| Form submission | Chỉ validate local | Backend API lưu data |
-| Video recording | Giả lập start/stop | `MediaRecorder` API + upload |
-| Data storage | Không có | Backend + Database |
+| Chức năng | Implement | Ghi chú |
+|-----------|-----------|---------|
+| Database | Supabase PostgreSQL | Bảng `teachers` với Row Level Security (RLS) |
+| Form submission | Supabase Auth + DB | Đăng ký Auth `signUp` và insert profile |
+| Email confirmation | Supabase Auth | Gửi email thực tế, verify link chặn tại Bước 2 |
+| Camera preview | WebRTC `getUserMedia` | Hook `useCamera` báo lỗi nếu denied/not found |
+| Mic level | Web Audio API `AnalyserNode` | Hook `useMicrophone` đo âm lượng thực (RMS 0-100) |
+| Video recording | `MediaRecorder` API | Hook `useRecorder` quay video/webm |
+| Video upload | Supabase Storage | Bucket `recordings`, upload với progress state |
 
 ### 🐛 Known Bugs
 - Không có bug được phát hiện tại thời điểm này.
@@ -40,17 +41,12 @@ Các chức năng sau hiện **chỉ là giả lập (mock/demo)**, chưa tích 
 
 | Priority | Task | Mô tả |
 |----------|------|-------|
-| **High** | WebRTC integration | Camera/mic thực cho recording pages |
-| **High** | Real mic level | Web Audio API thay vì random number |
-| **High** | Backend API + Database | Lưu form data, recordings |
-| **High** | Email confirmation flow | Gửi email + verify link |
-| Medium | Video upload | Upload recording lên cloud storage |
-| Medium | Admin dashboard | Review ứng viên |
-| Low | i18n | Hỗ trợ tiếng Việt |
-| Low | Unit tests | Vitest + RTL |
-| Low | Animation polish | Page transitions, micro-interactions |
+| Medium | Admin dashboard | Giao diện cho Admin review ứng viên (xem video, duyệt) |
+| Low | i18n | Hỗ trợ đa ngôn ngữ (Tiếng Anh/Tiếng Việt) |
+| Low | Unit tests | Setup Vitest + React Testing Library |
+| Low | Animation polish | Thêm page transitions mượt mà hơn giữa các step |
 
 ### 🔧 Dev Environment
-- **Dev server**: `npm run dev` → `http://localhost:3000/`
+- **Dev server**: `npm run dev` → `http://localhost:3000/` (Phải dùng `localhost` để test camera/mic trên máy tính, hoặc dùng `--host` và truy cập qua IP nếu có HTTPS hoặc config trình duyệt cho phép insecure origin).
 - **Node**: 18+
-- **Package manager**: npm
+- **Backend**: Supabase (Auth, DB, Storage)
