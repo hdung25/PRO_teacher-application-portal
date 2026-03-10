@@ -60,16 +60,50 @@ function EmailConfirmation({ onNext }) {
         const checkVerification = async () => {
             setIsChecking(true)
             try {
-                // Refresh the session to get updated user data
-                const { data: { user }, error } = await supabase.auth.getUser()
+                // getSession is safe to call without a token
+                const { data: { session }, error } = await supabase.auth.getSession()
                 if (error) {
-                    console.error('Verification check error:', error)
+                    console.error('Session check error:', error)
                     return
                 }
-                if (user?.email_confirmed_at) {
+                
+                if (session?.user?.email_confirmed_at) {
                     setIsVerified(true)
-                    // Update the teachers table
-                    await supabase.from('teachers').update({ email_verified: true }).eq('id', user.id)
+                    
+                    // Insert pending application data into teachers table
+                    const pendingStr = localStorage.getItem('pendingApplication')
+                    if (pendingStr) {
+                        try {
+                            const pendingData = JSON.parse(pendingStr)
+                            
+                            // Check if teacher already exists first
+                            const { data: existing } = await supabase
+                                .from('teachers')
+                                .select('id')
+                                .eq('id', session.user.id)
+                                .single()
+                                
+                            if (!existing) {
+                                await supabase.from('teachers').insert({
+                                    ...pendingData,
+                                    email_verified: true,
+                                    status: 'pending'
+                                })
+                            } else {
+                                await supabase.from('teachers')
+                                    .update({ email_verified: true })
+                                    .eq('id', session.user.id)
+                            }
+                            localStorage.removeItem('pendingApplication')
+                        } catch (e) {
+                            console.error('Error handling pending profile:', e)
+                        }
+                    } else {
+                        // Just update status if already existing
+                        await supabase.from('teachers')
+                            .update({ email_verified: true })
+                            .eq('id', session.user.id)
+                    }
                 }
             } catch (err) {
                 console.error('Poll error:', err)
@@ -81,7 +115,7 @@ function EmailConfirmation({ onNext }) {
         // Check immediately
         checkVerification()
 
-        // Then poll every 5 seconds
+        // Poll every 5 seconds (mostly to catch cross-tab storage changes if onAuthStateChange misses it)
         pollRef.current = setInterval(checkVerification, 5000)
 
         return () => {

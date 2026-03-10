@@ -95,8 +95,8 @@ function ApplicationForm({ onNext }) {
                 return
             }
 
-            // 2. Insert teacher profile into the teachers table
-            const { error: insertError } = await supabase.from('teachers').insert({
+            // Save pending profile to localStorage to insert AFTER email confirmation
+            localStorage.setItem('pendingApplication', JSON.stringify({
                 id: userId,
                 first_name: formData.firstName.trim(),
                 middle_name: formData.middleName.trim() || null,
@@ -104,13 +104,7 @@ function ApplicationForm({ onNext }) {
                 email: formData.email.trim().toLowerCase(),
                 country: formData.country,
                 nationality: formData.nationality,
-                status: 'pending',
-            })
-
-            if (insertError) {
-                console.error('Profile insert error:', insertError)
-                // Still proceed — auth user was created, profile can be retried
-            }
+            }))
 
             onNext()
         } catch (err) {
