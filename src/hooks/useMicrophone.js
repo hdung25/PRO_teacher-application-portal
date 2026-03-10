@@ -10,7 +10,7 @@ export function useMicrophone(stream) {
     const audioContextRef = useRef(null)
     const analyserRef = useRef(null)
     const animationFrameRef = useRef(null)
-    const sourceRef = useRef(null)
+    const lastUpdateTimeRef = useRef(0)
 
     const startAnalyser = useCallback(() => {
         if (!stream) return
@@ -25,7 +25,7 @@ export function useMicrophone(stream) {
 
             const analyser = audioContext.createAnalyser()
             analyser.fftSize = 256
-            analyser.smoothingTimeConstant = 0.5 // Lower smoothing for faster response
+            analyser.smoothingTimeConstant = 0.4 // Moderate Native smoothing
 
             const source = audioContext.createMediaStreamSource(stream)
             source.connect(analyser)
@@ -47,43 +47,38 @@ export function useMicrophone(stream) {
             window.addEventListener('touchstart', unlockAudioContext)
 
             const dataArray = new Uint8Array(analyser.frequencyBinCount)
-            let smoothedLevel = 0;
 
-            const updateLevel = () => {
+            const updateLevel = (timestamp) => {
                 if (!analyserRef.current) return
 
-                analyserRef.current.getByteFrequencyData(dataArray)
+                analyserRef.current.getByteTimeDomainData(dataArray)
 
-                // Find the peak frequency amplitude (0-255)
-                let currentMax = 0
+                // Calculate RMS (root mean square) from time domain
+                let sum = 0
                 for (let i = 0; i < dataArray.length; i++) {
-                    if (dataArray[i] > currentMax) {
-                        currentMax = dataArray[i]
-                    }
+                    const amplitude = dataArray[i] - 128
+                    sum += amplitude * amplitude
                 }
+                const rms = Math.sqrt(sum / dataArray.length)
 
-                // Convert to percentage and add a boost for normal speaking volume
-                let rawPercentage = (currentMax / 255) * 100
-                rawPercentage = Math.min(100, rawPercentage * 1.5) // 1.5x boost
+                // Normalize: Normal voice usually hits RMS 10-25
+                let normalized = Math.min(100, Math.round((rms / 25) * 100))
+                
+                // Noise floor
+                if (normalized < 5) normalized = 0
 
-                // Noise floor clamping
-                if (rawPercentage < 8) rawPercentage = 0
-
-                // Fast attack, slow release (Damping for smooth visuals)
-                if (rawPercentage > smoothedLevel) {
-                    // Instant response to loud sounds
-                    smoothedLevel = rawPercentage
-                } else {
-                    // Smooth visual falloff (decrease by 4% each frame ~ 60fps)
-                    smoothedLevel = Math.max(0, smoothedLevel - 4)
+                // Throttle React state updates to ~15fps (every 66ms) 
+                // This allows CSS 'duration-150' transitions to do the smoothing!
+                // 60fps updates interrupt CSS transitions and cause extreme jitter.
+                if (timestamp - lastUpdateTimeRef.current > 66) {
+                    setMicLevel(normalized)
+                    lastUpdateTimeRef.current = timestamp
                 }
-
-                setMicLevel(Math.round(smoothedLevel))
 
                 animationFrameRef.current = requestAnimationFrame(updateLevel)
             }
 
-            updateLevel()
+            animationFrameRef.current = requestAnimationFrame(updateLevel)
         } catch (err) {
             console.error('Failed to initialize audio analyser:', err)
             setIsActive(false)

@@ -79,6 +79,8 @@ export function useCamera() {
     useEffect(() => {
         if (videoRef.current && stream) {
             videoRef.current.srcObject = stream
+            // Explicitly call play() to ensure iOS Safari doesn't keep it paused
+            videoRef.current.play().catch(e => console.warn("Video auto-play prevented:", e))
         }
     }, [stream])
 

@@ -153,9 +153,10 @@ function LanguageTestRecording({ onNext, userId }) {
                         ref={videoRef}
                         autoPlay
                         playsInline
+                        webkit-playsinline="true"
                         muted
                         className={`absolute inset-0 w-full h-full object-cover ${isReady ? 'opacity-100' : 'opacity-0'} transition-opacity duration-500`}
-                        style={{ transform: 'scaleX(-1)' }}
+                        style={{ transform: 'scaleX(-1)', pointerEvents: 'none' }}
                     />
 
                     {/* Fallback when camera not ready */}
