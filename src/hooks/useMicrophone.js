@@ -47,23 +47,38 @@ export function useMicrophone(stream) {
             window.addEventListener('touchstart', unlockAudioContext)
 
             const dataArray = new Uint8Array(analyser.frequencyBinCount)
+            let smoothedLevel = 0;
 
             const updateLevel = () => {
                 if (!analyserRef.current) return
 
-                analyserRef.current.getByteTimeDomainData(dataArray)
+                analyserRef.current.getByteFrequencyData(dataArray)
 
-                // Calculate RMS (root mean square) from time domain
-                let sum = 0
+                // Find the peak frequency amplitude (0-255)
+                let currentMax = 0
                 for (let i = 0; i < dataArray.length; i++) {
-                    const amplitude = dataArray[i] - 128
-                    sum += amplitude * amplitude
+                    if (dataArray[i] > currentMax) {
+                        currentMax = dataArray[i]
+                    }
                 }
-                const rms = Math.sqrt(sum / dataArray.length)
 
-                // Increase sensitivity: Normal speaking RMS is often around 5-20
-                const normalized = Math.min(100, Math.round((rms / 20) * 100))
-                setMicLevel(normalized)
+                // Convert to percentage and add a boost for normal speaking volume
+                let rawPercentage = (currentMax / 255) * 100
+                rawPercentage = Math.min(100, rawPercentage * 1.5) // 1.5x boost
+
+                // Noise floor clamping
+                if (rawPercentage < 8) rawPercentage = 0
+
+                // Fast attack, slow release (Damping for smooth visuals)
+                if (rawPercentage > smoothedLevel) {
+                    // Instant response to loud sounds
+                    smoothedLevel = rawPercentage
+                } else {
+                    // Smooth visual falloff (decrease by 4% each frame ~ 60fps)
+                    smoothedLevel = Math.max(0, smoothedLevel - 4)
+                }
+
+                setMicLevel(Math.round(smoothedLevel))
 
                 animationFrameRef.current = requestAnimationFrame(updateLevel)
             }

@@ -64,7 +64,7 @@ function DemoTeaching({ onNext, userId }) {
 
     const handleUpload = async (blob) => {
         if (!userId) {
-            stopCamera()
+            stopCamera(true)
             onNext()
             return
         }
@@ -92,12 +92,12 @@ function DemoTeaching({ onNext, userId }) {
                 }).eq('id', userId)
             }
 
-            stopCamera()
+            stopCamera(true)
             onNext()
         } catch (err) {
             console.error('Upload exception:', err)
             setUploadError('Upload failed. You can proceed anyway.')
-            stopCamera()
+            stopCamera(true)
             onNext()
         } finally {
             setIsUploading(false)
