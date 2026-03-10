@@ -51,17 +51,18 @@ export function useMicrophone(stream) {
             const updateLevel = () => {
                 if (!analyserRef.current) return
 
-                analyserRef.current.getByteFrequencyData(dataArray)
+                analyserRef.current.getByteTimeDomainData(dataArray)
 
-                // Calculate average frequency volume
+                // Calculate RMS (root mean square) from time domain
                 let sum = 0
                 for (let i = 0; i < dataArray.length; i++) {
-                    sum += dataArray[i]
+                    const amplitude = dataArray[i] - 128
+                    sum += amplitude * amplitude
                 }
-                const average = sum / dataArray.length
+                const rms = Math.sqrt(sum / dataArray.length)
 
-                // Increase sensitivity a lot: average usually hovers around 10-30 for normal speaking
-                const normalized = Math.min(100, Math.round((average / 40) * 100))
+                // Increase sensitivity: Normal speaking RMS is often around 5-20
+                const normalized = Math.min(100, Math.round((rms / 20) * 100))
                 setMicLevel(normalized)
 
                 animationFrameRef.current = requestAnimationFrame(updateLevel)
